@@ -1,0 +1,10 @@
+
+[Volcanic Soil]
+
+# Number of full crop harvests (seed to mature) on tilled volcanic soil before
+# it degrades to normal soil. Minimum 1.
+volcanic_soil_fertility_cycles (Volcanic soil fertility cycles) int 5 1 100
+
+# Seconds between extra ABM growth ticks on tilled volcanic soil. Lower values
+# make crops grow faster; minimum 5.
+volcanic_soil_growth_boost_interval (Volcanic soil growth boost interval) int 30 5 300

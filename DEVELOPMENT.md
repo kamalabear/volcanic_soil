@@ -5,65 +5,182 @@
 | File | Purpose |
 |---|---|
 | `init.lua` | Entry point — loads `volcanic_soil.lua` |
-| `volcanic_soil.lua` | Node definition and cooking recipe |
+| `volcanic_soil.lua` | Node definitions, ABM, on_dignode callback, config |
 | `mod.conf` | Mod name, display name, description, `depends`, `optional_depends` |
-| `textures/` | Animated lava soil texture (`lava_soil.png`) |
+| `settingtypes.txt` | In-game settings editor entries |
+| `textures/lava_soil.png` | Animated lava soil texture (natural form) |
+| `textures/lava_soil_tilled.png` | Animated lava soil texture (tilled form — warmer tone) |
 | `LICENSE` | MIT license |
 
 ---
 
-## Node definition
+## Node state diagram
+
+```
+[recipe / crucible output]
+         │
+         ▼
+volcanic_soil:volcanic_soil      (natural, soil=1)
+         │
+         │  hoe right-click (farming hoe reads ndef.soil.dry)
+         ▼
+volcanic_soil:volcanic_soil_tilled   (fertilized, soil=3)
+         │
+         │  N mature crop harvests (on_dignode counter)
+         ▼
+ farming:soil_wet  (or default:dirt if farming mod absent)
+```
+
+Digging `volcanic_soil:volcanic_soil_tilled` directly drops a tilled-form item
+that carries the remaining cycle count in item metadata, so no progress is lost
+when a player moves the block.
+
+---
+
+## Node definitions
+
+### `volcanic_soil:volcanic_soil` (natural / untilled)
 
 ```lua
 minetest.register_node("volcanic_soil:volcanic_soil", {
     description = "Volcanic Soil",
     is_ground_content = true,
-    groups = {crumbly=3, soil=3, spreading_dirt_type=1},
+    groups = {crumbly=3, soil=1, spreading_dirt_type=1},
     stack_max = 99,
-    tiles = {
-        {
-            name = "lava_soil.png",
-            backface_culling = false,
-            animation = {
-                type = "vertical_frames",
-                aspect_w = 16,
-                aspect_h = 16,
-                length = 6.0,
-            },
-        },
+    soil = {
+        base = "volcanic_soil:volcanic_soil",
+        dry  = "volcanic_soil:volcanic_soil_tilled",
+        wet  = "volcanic_soil:volcanic_soil_tilled",
     },
+    tiles = { { name="lava_soil.png", animation={...} } },
     sounds = default.node_sound_dirt_defaults()
 })
 ```
 
-### Properties explained
+**Key points:**
+- `soil=1` signals that a hoe can till this node.
+- The `soil` property table is read by the asuna farming hoe (`hoes.lua`): it checks `group:soil == 1` and then converts the node to `ndef.soil.dry`. No `on_rightclick` handler is needed on the soil node itself.
+- The `soil.wet` entry is also set (same destination) to prevent the farming ABM treating this as a dry-soil candidate for wetting/drying cycles.
 
-| Property | Value | Purpose |
-|----------|-------|---------|
-| `description` | "Volcanic Soil" | Display name in inventory |
-| `is_ground_content` | `true` | Caves generate through it; can be compacted by mods |
-| `groups.crumbly` | 3 | Shovel-minable (crumbly=1 is easiest, hardness scales) |
-| `groups.soil` | 3 | Compatible with farming and soil-type recipes |
-| `groups.spreading_dirt_type` | 1 | Participates in dirt spreading (if enabled nearby) |
-| `stack_max` | 99 | 99 blocks per inventory stack |
-| `tiles[1].animation` | Vertical frames, 6s loop | Animates the lava texture (6 frames, 1s each) |
-| `sounds` | Default dirt | Uses standard dirt break/place sounds |
+### `volcanic_soil:volcanic_soil_tilled` (fertilized / tilled)
+
+```lua
+minetest.register_node("volcanic_soil:volcanic_soil_tilled", {
+    description = "Volcanic Soil (Tilled)",
+    is_ground_content = true,
+    groups = {
+        crumbly=3, soil=3, spreading_dirt_type=1, wet=1,
+        field=1, grassland=1, desert=1, underground=1, ice_fishing=1,
+    },
+    soil = {
+        base = "volcanic_soil:volcanic_soil",
+        dry  = "volcanic_soil:volcanic_soil_tilled",
+        wet  = "volcanic_soil:volcanic_soil_tilled",
+    },
+    drop = "",   -- managed by after_dig_node
+    tiles = { { name="lava_soil_tilled.png", animation={...} } },
+    sounds = default.node_sound_dirt_defaults(),
+    on_construct    = function(pos) ... end,
+    after_place_node = function(pos, placer, itemstack) ... end,
+    after_dig_node  = function(pos, oldnode, oldmetadata, digger) ... end,
+})
+```
+
+**Key points:**
+- `soil=3` makes it equivalent to wet tilled soil for all farming mods.
+- Extra groups (`grassland`, `desert`, `underground`, `ice_fishing`, `field`) cover all x_farming fertility requirements so any crop can grow here.
+- Self-referential `soil` table (`dry` and `wet` both point back to itself) prevents the asuna farming wet/dry ABM from ever converting this node away.
+- `drop = ""` suppresses the default item drop. `after_dig_node` issues the item manually (see *Cycle count persistence* below).
+
+---
+
+## Cycle count persistence
+
+The tilled node stores `volcanic_soil_cycles` (int) in its node metadata.
+
+**Flow:**
+
+1. **Tilling (hoe):** `on_construct` fires, sets `volcanic_soil_cycles` to `volcanic_soil.config.fertility_cycles`. The hoe uses `core.set_node` — no item is consumed — so `after_place_node` is not called; the value always starts at the configured maximum.
+
+2. **Placing from inventory:** `on_construct` fires first (sets default), then `after_place_node` fires and overwrites with the value stored in the item's metadata (if positive). This restores progress from a previously-dug tilled block.
+
+3. **Digging:** `after_dig_node(pos, oldnode, oldmetadata, digger)` is called.
+   - `oldmetadata` is a plain table (`{fields={...}, inventory={...}}`), the format returned by `MetaDataRef:to_table()`.
+   - Reads `tonumber(oldmetadata.fields["volcanic_soil_cycles"])`.
+   - Creates an `ItemStack("volcanic_soil:volcanic_soil_tilled")`, stores the cycle count and a human-readable description in the item's metadata.
+   - Gives the stack to the digger's inventory (or drops at position if full).
+
+---
+
+## Growth boost ABM
+
+```lua
+minetest.register_abm({
+    label     = "Volcanic soil growth boost",
+    nodenames = {"group:growing"},
+    neighbors = {"volcanic_soil:volcanic_soil_tilled"},
+    interval  = volcanic_soil.config.growth_boost_interval,  -- default 30 s
+    chance    = 1,
+    action    = function(pos) ... end,
+})
+```
+
+The action:
+1. Verifies `minetest.get_node({pos.x, pos.y-1, pos.z}).name == "volcanic_soil:volcanic_soil_tilled"`.
+2. Parses the crop node name with `node.name:match("^(.-)(%d+)$")` to extract base and stage number.
+3. If `minetest.registered_nodes[base .. (stage+1)]` exists, calls `minetest.set_node` to advance the crop one stage.
+
+This works for all mods that follow the `modname:cropname_N` naming convention (asuna farming, x_farming, better_farming). Seeds (which typically don't have the `growing` group) are unaffected.
+
+---
+
+## Harvest cycle counter
+
+```lua
+minetest.register_on_dignode(function(pos, oldnode) ... end)
+```
+
+Fires on every node dig worldwide. The checks are fast and return early for non-matching nodes:
+
+1. `minetest.get_item_group(oldnode.name, "plant") == 0` → return (not a plant)
+2. `minetest.get_item_group(oldnode.name, "growing") ~= 0` → return (still growing, not mature)
+3. Node at `{pos.x, pos.y-1, pos.z}` ≠ `"volcanic_soil:volcanic_soil_tilled"` → return
+
+When all checks pass, decrements `volcanic_soil_cycles` in node metadata. If the result ≤ 0, replaces the node with `farming:soil_wet` (or `default:dirt` as fallback).
+
+---
+
+## Configuration
+
+Loaded at mod startup in `volcanic_soil.lua`:
+
+```lua
+volcanic_soil.config = {
+    fertility_cycles      = tonumber(minetest.settings:get("volcanic_soil_fertility_cycles"))      or 5,
+    growth_boost_interval = tonumber(minetest.settings:get("volcanic_soil_growth_boost_interval")) or 30,
+}
+```
+
+Settings are also declared in `settingtypes.txt` for the in-game editor.
 
 ---
 
 ## Texture and animation
 
-**Texture file:** `textures/lava_soil.png`
+Both textures are animated vertical strips (16 px wide, 16 px per frame):
 
-The texture is 96 pixels tall (16 wide × 6 frames high), displaying 6 sequential animation frames in a vertical strip. The animation plays at 1 second per frame (6s total loop).
+| Texture | Description |
+|---|---|
+| `lava_soil.png` | Natural form — original lava-touched palette |
+| `lava_soil_tilled.png` | Tilled form — warmer-toned variant (boosted green, reduced blue channels) |
 
-Animation definition:
+Animation definition used by both:
 ```lua
 animation = {
-    type = "vertical_frames",      -- Frames stacked vertically
-    aspect_w = 16,                 -- Frame width in pixels
-    aspect_h = 16,                 -- Frame height in pixels
-    length = 6.0,                  -- Total animation duration (seconds)
+    type     = "vertical_frames",
+    aspect_w = 16,
+    aspect_h = 16,
+    length   = 6.0,
 }
 ```
 
@@ -71,33 +188,33 @@ animation = {
 
 ## Recipes
 
+Both recipes produce the **natural** form (`volcanic_soil:volcanic_soil`). Players till it to unlock fertilized behaviour.
+
 ### Cooking recipe (compressed cobble)
 
 ```lua
 minetest.register_craft({
-    type = "cooking",
-    output = "volcanic_soil:volcanic_soil 8",
-    recipe = "moreblocks:cobble_compressed",
-    cooktime = 1
+    type     = "cooking",
+    output   = "volcanic_soil:volcanic_soil 8",
+    recipe   = "moreblocks:cobble_compressed",
+    cooktime = 1,
 })
 ```
 
-- **Input:** Any compressed cobble variant (e.g., `moreblocks:cobble_compressed`)
-- **Output:** 8× Volcanic Soil per compressed block
-- **Cook time:** 1 second (very fast)
-- **Furnace:** Works in any standard furnace
-
 ### Crucible output (stone input)
 
-When `lava_crucible` is installed, the crucible outputs `volcanic_soil:volcanic_soil` when processing stone:
-
-- **Input:** Stone-group items (varies with crucible tier)
-- **Output:** 1–9× Volcanic Soil (varies with crucible tier and processing stage)
-- **Bonus:** Random mineral dust (from ore_dust pool)
-
-The crucible directly calls `volcanic_soil` as its soil output node via the `volcanic_soil:volcanic_soil` node name.
+When `lava_crucible` is installed the crucible outputs `volcanic_soil:volcanic_soil`
+when processing stone. See the Lava Crucible mod for registration details.
 
 ---
+
+## Integration notes
+
+- **Any mod** referencing `group:soil` ≥ 3 will recognise the tilled form as a valid planting surface.
+- **x_farming** bonemeal checks `ndef.groups` for fertility group membership; the tilled node's groups cover all known x_farming fertility values.
+- **bonemeal mod** checks `group:soil`, `group:sand`, or `group:can_bonemeal` — the tilled node satisfies `group:soil`.
+- **Auto-harvesters** (e.g. pipeworks-based machines) that dig crops via the normal dig path will also trigger `on_dignode`, consuming fertility cycles. This is intentional.
+
 
 ## Dependencies and integration
 
