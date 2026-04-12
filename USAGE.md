@@ -62,6 +62,10 @@ Crops also grow **faster** than on normal soil: an ABM fires periodically and
 advances each growing crop by one extra stage, on top of the crop's own timer.
 The boost interval is configurable (default every 30 seconds).
 
+Saplings also get an extra growth boost when planted on volcanic soil (natural
+or tilled). This boost triggers additional growth attempts, so tree growth is
+typically faster than on ordinary dirt.
+
 ### 3. Fertility degrades with each harvest
 
 Each time a **mature (fully-grown) crop** is harvested above tilled volcanic
@@ -116,11 +120,13 @@ Add these settings to `minetest.conf`:
 |---|---|---|
 | `volcanic_soil_fertility_cycles` | `5` | Full harvests before tilled soil degrades (min 1, max 100) |
 | `volcanic_soil_growth_boost_interval` | `30` | Seconds between extra growth ticks (min 5, max 300) |
+| `volcanic_soil_sapling_boost_interval` | `20` | Seconds between extra sapling growth attempts (min 5, max 300) |
 
 **Example:**
 ```
 volcanic_soil_fertility_cycles = 8
 volcanic_soil_growth_boost_interval = 20
+volcanic_soil_sapling_boost_interval = 15
 ```
 
 These settings are also exposed in the in-game settings editor under *Volcanic Soil*.

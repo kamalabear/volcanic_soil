@@ -7,6 +7,7 @@ volcanic_soil = volcanic_soil or {}
 volcanic_soil.config = {
     fertility_cycles        = tonumber(minetest.settings:get("volcanic_soil_fertility_cycles"))        or 5,
     growth_boost_interval   = tonumber(minetest.settings:get("volcanic_soil_growth_boost_interval"))   or 30,
+    sapling_boost_interval  = tonumber(minetest.settings:get("volcanic_soil_sapling_boost_interval"))  or 20,
 }
 
 -- Node to convert to when fertility is exhausted.
@@ -73,11 +74,30 @@ minetest.register_node("volcanic_soil:volcanic_soil_tilled", {
     -- Suppress default drop so after_dig_node can issue a tilled item that
     -- carries the remaining cycle count in its metadata.
     drop = "",
-    -- lava_soil_tilled.png is a colour-shifted variant of lava_soil.png that
-    -- gives the tilled state a warmer, worked-earth tone.
+    -- Top face shows furrows; bottom and sides keep the natural texture.
     tiles = {
         {
             name = "lava_soil_tilled.png",
+            backface_culling = false,
+            animation = {
+                type = "vertical_frames",
+                aspect_w = 16,
+                aspect_h = 16,
+                length = 6.0,
+            },
+        },
+        {
+            name = "lava_soil.png",
+            backface_culling = false,
+            animation = {
+                type = "vertical_frames",
+                aspect_w = 16,
+                aspect_h = 16,
+                length = 6.0,
+            },
+        },
+        {
+            name = "lava_soil.png",
             backface_culling = false,
             animation = {
                 type = "vertical_frames",
@@ -161,6 +181,49 @@ minetest.register_abm({
         local next_name = base .. tostring(tonumber(stage_str) + 1)
         if minetest.registered_nodes[next_name] then
             minetest.set_node(pos, {name = next_name})
+        end
+    end,
+})
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ABM: sapling growth boost
+-- Accelerates saplings planted directly on tilled volcanic soil.
+-- For timer-based saplings (default, moretrees) the node timer is restarted
+-- with a zero timeout so it fires on the next server step.
+-- For ABM-based saplings (ethereal) the mod's own grow function is called
+-- directly; ethereal's substrate checks still apply, so its biome-specific
+-- saplings will only grow if volcanic soil qualifies (it has soil=3).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+minetest.register_abm({
+    label     = "Volcanic soil sapling boost",
+    nodenames = {"group:sapling"},
+    neighbors = {
+        "volcanic_soil:volcanic_soil",
+        "volcanic_soil:volcanic_soil_tilled",
+    },
+    interval  = volcanic_soil.config.sapling_boost_interval,
+    chance    = 2,
+    catch_up  = false,
+    action    = function(pos)
+        -- Only act when the sapling is directly on volcanic soil.
+        local below = {x=pos.x, y=pos.y-1, z=pos.z}
+        local below_name = minetest.get_node(below).name
+        if below_name ~= "volcanic_soil:volcanic_soil"
+        and below_name ~= "volcanic_soil:volcanic_soil_tilled" then
+            return
+        end
+
+        local node = minetest.get_node(pos)
+        local ndef = minetest.registered_nodes[node.name]
+        if not ndef then return end
+
+        if ndef.on_timer then
+            -- Timer-based sapling: restart with 0 timeout to fire immediately.
+            minetest.get_node_timer(pos):start(0)
+        elseif ethereal and ethereal.grow_sapling then
+            -- Ethereal ABM-based saplings: delegate to ethereal's own grow fn.
+            ethereal.grow_sapling(pos, node)
         end
     end,
 })

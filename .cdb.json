@@ -1,0 +1,17 @@
+{
+  "$schema": "https://content.luanti.org/api/cdb_schema/",
+  "type": "MOD",
+  "name": "volcanic_soil",
+  "title": "Volcanic Soil",
+  "short_description": "Super-fertile volcanic soil with growth boosts and harvest-based fertility decay.",
+  "dev_state": "ACTIVELY_DEVELOPED",
+  "ai_disclosure": "ASSISTED",
+  "tags": ["farming", "terrain", "survival", "utility"],
+  "license": "MIT",
+  "media_license": "MIT",
+  "long_description": "Volcanic Soil adds a high-fertility soil path for farming progression.\n\nKey features:\n- Natural and tilled volcanic soil states.\n- Tilled volcanic soil boosts crop growth with extra growth ticks.\n- Both natural and tilled volcanic soil accelerate sapling growth attempts.\n- Fertility decays on mature harvests and eventually degrades to normal soil.\n- Remaining fertility cycles persist when tilled soil is dug and replaced.\n- Fertility cycles and both growth intervals are configurable.\n\nAcquisition paths:\n- Smelt compressed cobble for an early-game route.\n- Use Lava Crucible processing for an advanced route with bonus resources.\n\nCompatibility:\n- Required: moreblocks, ore_dust\n- Optional: farming, x_farming",
+  "repo": "https://github.com/kamalabear/volcanic_soil",
+  "issue_tracker": "https://github.com/kamalabear/volcanic_soil/issues",
+  "forum_url": "https://github.com/kamalabear/volcanic_soil/discussions",
+  "website": "https://github.com/kamalabear/volcanic_soil"
+}

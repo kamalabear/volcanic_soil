@@ -9,7 +9,7 @@
 | `mod.conf` | Mod name, display name, description, `depends`, `optional_depends` |
 | `settingtypes.txt` | In-game settings editor entries |
 | `textures/lava_soil.png` | Animated lava soil texture (natural form) |
-| `textures/lava_soil_tilled.png` | Animated lava soil texture (tilled form — warmer tone) |
+| `textures/lava_soil_tilled.png` | Animated top texture for tilled form (furrowed) |
 | `LICENSE` | MIT license |
 
 ---
@@ -78,7 +78,11 @@ minetest.register_node("volcanic_soil:volcanic_soil_tilled", {
         wet  = "volcanic_soil:volcanic_soil_tilled",
     },
     drop = "",   -- managed by after_dig_node
-    tiles = { { name="lava_soil_tilled.png", animation={...} } },
+    tiles = {
+        { name="lava_soil_tilled.png", animation={...} }, -- top
+        { name="lava_soil.png", animation={...} },        -- bottom
+        { name="lava_soil.png", animation={...} },        -- sides
+    },
     sounds = default.node_sound_dirt_defaults(),
     on_construct    = function(pos) ... end,
     after_place_node = function(pos, placer, itemstack) ... end,
@@ -150,6 +154,31 @@ When all checks pass, decrements `volcanic_soil_cycles` in node metadata. If the
 
 ---
 
+## Sapling growth boost ABM
+
+```lua
+minetest.register_abm({
+    label     = "Volcanic soil sapling boost",
+    nodenames = {"group:sapling"},
+    neighbors = {
+        "volcanic_soil:volcanic_soil",
+        "volcanic_soil:volcanic_soil_tilled",
+    },
+    interval  = volcanic_soil.config.sapling_boost_interval, -- default 20 s
+    chance    = 2,
+    catch_up  = false,
+    action    = function(pos) ... end,
+})
+```
+
+Behavior:
+1. Runs only when the sapling is directly above natural or tilled volcanic soil.
+2. For timer-based saplings, starts the node timer with `start(0)` to trigger an immediate growth attempt.
+3. For ABM-based saplings (e.g. ethereal), calls that mod's growth function when available.
+4. Uses `catch_up = false` to avoid large growth bursts after server downtime.
+
+---
+
 ## Configuration
 
 Loaded at mod startup in `volcanic_soil.lua`:
@@ -158,6 +187,7 @@ Loaded at mod startup in `volcanic_soil.lua`:
 volcanic_soil.config = {
     fertility_cycles      = tonumber(minetest.settings:get("volcanic_soil_fertility_cycles"))      or 5,
     growth_boost_interval = tonumber(minetest.settings:get("volcanic_soil_growth_boost_interval")) or 30,
+    sapling_boost_interval = tonumber(minetest.settings:get("volcanic_soil_sapling_boost_interval")) or 20,
 }
 ```
 

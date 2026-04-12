@@ -8,3 +8,7 @@ volcanic_soil_fertility_cycles (Volcanic soil fertility cycles) int 5 1 100
 # Seconds between extra ABM growth ticks on tilled volcanic soil. Lower values
 # make crops grow faster; minimum 5.
 volcanic_soil_growth_boost_interval (Volcanic soil growth boost interval) int 30 5 300
+
+# Seconds between extra sapling-growth attempts on tilled volcanic soil. Lower
+# values make saplings grow faster; minimum 5.
+volcanic_soil_sapling_boost_interval (Volcanic soil sapling boost interval) int 20 5 300
