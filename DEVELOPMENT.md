@@ -12,7 +12,6 @@
 | `textures/lava_soil_tilled.png` | Animated top texture for tilled form (furrowed) |
 | `LICENSE` | MIT license |
 
----
 
 ## Node state diagram
 
@@ -35,7 +34,6 @@ Digging `volcanic_soil:volcanic_soil_tilled` directly drops a tilled-form item
 that carries the remaining cycle count in item metadata, so no progress is lost
 when a player moves the block.
 
----
 
 ## Node definitions
 
@@ -58,9 +56,6 @@ minetest.register_node("volcanic_soil:volcanic_soil", {
 ```
 
 **Key points:**
-- `soil=1` signals that a hoe can till this node.
-- The `soil` property table is read by the asuna farming hoe (`hoes.lua`): it checks `group:soil == 1` and then converts the node to `ndef.soil.dry`. No `on_rightclick` handler is needed on the soil node itself.
-- The `soil.wet` entry is also set (same destination) to prevent the farming ABM treating this as a dry-soil candidate for wetting/drying cycles.
 
 ### `volcanic_soil:volcanic_soil_tilled` (fertilized / tilled)
 
@@ -91,12 +86,7 @@ minetest.register_node("volcanic_soil:volcanic_soil_tilled", {
 ```
 
 **Key points:**
-- `soil=3` makes it equivalent to wet tilled soil for all farming mods.
-- Extra groups (`grassland`, `desert`, `underground`, `ice_fishing`, `field`) cover all x_farming fertility requirements so any crop can grow here.
-- Self-referential `soil` table (`dry` and `wet` both point back to itself) prevents the asuna farming wet/dry ABM from ever converting this node away.
-- `drop = ""` suppresses the default item drop. `after_dig_node` issues the item manually (see *Cycle count persistence* below).
 
----
 
 ## Cycle count persistence
 
@@ -114,7 +104,6 @@ The tilled node stores `volcanic_soil_cycles` (int) in its node metadata.
    - Creates an `ItemStack("volcanic_soil:volcanic_soil_tilled")`, stores the cycle count and a human-readable description in the item's metadata.
    - Gives the stack to the digger's inventory (or drops at position if full).
 
----
 
 ## Growth boost ABM
 
@@ -136,7 +125,6 @@ The action:
 
 This works for all mods that follow the `modname:cropname_N` naming convention (asuna farming, x_farming, better_farming). Seeds (which typically don't have the `growing` group) are unaffected.
 
----
 
 ## Harvest cycle counter
 
@@ -152,7 +140,6 @@ Fires on every node dig worldwide. The checks are fast and return early for non-
 
 When all checks pass, decrements `volcanic_soil_cycles` in node metadata. If the result ≤ 0, replaces the node with `farming:soil_wet` (or `default:dirt` as fallback).
 
----
 
 ## Sapling growth boost ABM
 
@@ -177,7 +164,6 @@ Behavior:
 3. For ABM-based saplings (e.g. ethereal), calls that mod's growth function when available.
 4. Uses `catch_up = false` to avoid large growth bursts after server downtime.
 
----
 
 ## Configuration
 
@@ -193,7 +179,6 @@ volcanic_soil.config = {
 
 Settings are also declared in `settingtypes.txt` for the in-game editor.
 
----
 
 ## Texture and animation
 
@@ -214,7 +199,6 @@ animation = {
 }
 ```
 
----
 
 ## Recipes
 
@@ -236,26 +220,21 @@ minetest.register_craft({
 When `lava_crucible` is installed the crucible outputs `volcanic_soil:volcanic_soil`
 when processing stone. See the Lava Crucible mod for registration details.
 
----
 
 ## Integration notes
 
-- **Any mod** referencing `group:soil` ≥ 3 will recognise the tilled form as a valid planting surface.
-- **x_farming** bonemeal checks `ndef.groups` for fertility group membership; the tilled node's groups cover all known x_farming fertility values.
-- **bonemeal mod** checks `group:soil`, `group:sand`, or `group:can_bonemeal` — the tilled node satisfies `group:soil`.
-- **Auto-harvesters** (e.g. pipeworks-based machines) that dig crops via the normal dig path will also trigger `on_dignode`, consuming fertility cycles. This is intentional.
 
 
 ## Dependencies and integration
 
 ### Required dependencies
 
-- **moreblocks:** Provides `cobble_compressed` for the cooking recipe
-- **ore_dust:** Provides dust items that may drop from crucibles that output this soil
+- None for the core node registrations and farming behavior.
 
-### Optional dependencies
+### Optional integrations
 
-- **lava_crucible:** If installed, crucibles will process stone into volcanic_soil:volcanic_soil with bonus dust. If not installed, only the cooking recipe is available.
+- **moreblocks:** Provides `cobble_compressed` for the cooking recipe when installed.
+- **lava_crucible:** If installed, crucibles will process stone into `volcanic_soil:volcanic_soil`. If not installed, only the cooking recipe is available.
 
 ### Integration points
 
@@ -267,7 +246,6 @@ Any mod can incorporate volcanic_soil by:
 
 For example, farming mods can place crops on volcanic soil by checking the `soil` group.
 
----
 
 ## Extending volcanic_soil
 
@@ -304,13 +282,9 @@ To disable animation, modify the node definition to remove the animation table:
 tiles = { "lava_soil.png" }  -- Static texture instead
 ```
 
----
 
 ## Notes
 
-- **is_ground_content:** Set to `true` to allow cave generation and compaction by other mods
-- **Spreading dirt:** The `spreading_dirt_type=1` group enables dirt-spreading mechanics if nearby mods implement it (e.g., grass spreading)
-- **Node ID unified:** Both cooking and crucible paths output the same `volcanic_soil:volcanic_soil` node to consolidate two soil-generation paths into one
 
 ## License
 

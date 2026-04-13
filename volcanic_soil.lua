@@ -266,9 +266,12 @@ function minetest.register_craft(a)
     return craft(a)
 end
 
-minetest.register_craft({
-    type     = "cooking",
-    output   = "volcanic_soil:volcanic_soil 8",
-    recipe   = "moreblocks:cobble_compressed",
-    cooktime = 1,
-})
+if(minetest.get_modpath("moreblocks")) then
+    minetest.register_craft({
+        type     = "cooking",
+        output   = "volcanic_soil:volcanic_soil 8",
+        recipe   = "moreblocks:cobble_compressed",
+        cooktime = 1,
+    })
+end
+

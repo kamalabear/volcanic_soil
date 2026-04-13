@@ -15,7 +15,9 @@ Obtaining volcanic soil from a recipe always produces the **natural** form. Till
 
 ## Getting volcanic soil
 
-### Method 1: Cooking compressed cobble (simplest)
+### Method 1: Cooking compressed cobble (with moreblocks)
+
+If `moreblocks` is installed:
 
 1. Obtain **compressed cobble** from moreblocks (8× regular cobblestone → 1× compressed)
 2. Smelt in a furnace with any fuel (1 second cook time)
@@ -29,7 +31,7 @@ Cook time: 1 second
 Output: 8× Volcanic Soil
 ```
 
-Compressed cobble variants also work (desert cobble compressed, etc.).
+Compressed cobble variants also work (desert cobble compressed, etc.). If `moreblocks` is not installed, this acquisition path is unavailable.
 
 ### Method 2: Processing stone in a Lava Crucible (advanced)
 
