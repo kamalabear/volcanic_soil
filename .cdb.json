@@ -4,7 +4,7 @@
   "name": "volcanic_soil",
   "title": "Volcanic Soil",
   "short_description": "Super-fertile volcanic soil with growth boosts and harvest-based fertility decay.",
-  "dev_state": "ACTIVELY_DEVELOPED",
+  "dev_state": "WIP",
   "ai_disclosure": "ASSISTED",
   "tags": ["farming", "terrain", "survival", "utility"],
   "license": "MIT",
