@@ -27,7 +27,7 @@ volcanic_soil:volcanic_soil_tilled   (fertilized, soil=3)
          │
          │  N mature crop harvests (on_dignode counter)
          ▼
- farming:soil_wet  (or default:dirt if farming mod absent)
+ farming:soil_wet  (or default:dirt if available)
 ```
 
 Digging `volcanic_soil:volcanic_soil_tilled` directly drops a tilled-form item
@@ -138,7 +138,7 @@ Fires on every node dig worldwide. The checks are fast and return early for non-
 2. `minetest.get_item_group(oldnode.name, "growing") ~= 0` → return (still growing, not mature)
 3. Node at `{pos.x, pos.y-1, pos.z}` ≠ `"volcanic_soil:volcanic_soil_tilled"` → return
 
-When all checks pass, decrements `volcanic_soil_cycles` in node metadata. If the result ≤ 0, replaces the node with `farming:soil_wet` (or `default:dirt` as fallback).
+When all checks pass, decrements `volcanic_soil_cycles` in node metadata. If the result ≤ 0, it tries to replace the node with `farming:soil_wet`, then `default:dirt` if present. If neither node exists, the tilled volcanic soil remains in place and its cycle counter is clamped at `0`.
 
 
 ## Sapling growth boost ABM

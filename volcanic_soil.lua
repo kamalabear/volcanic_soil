@@ -11,12 +11,23 @@ volcanic_soil.config = {
 }
 
 -- Node to convert to when fertility is exhausted.
--- Prefer farming:soil_wet so the plot remains tillable; fall back to dirt.
+-- Prefer farming:soil_wet so the plot remains tillable; fall back to dirt if
+-- it exists; otherwise keep the tilled node in place.
 local function degradation_target()
     if minetest.registered_nodes["farming:soil_wet"] then
         return "farming:soil_wet"
     end
-    return "default:dirt"
+    if minetest.registered_nodes["default:dirt"] then
+        return "default:dirt"
+    end
+    return nil
+end
+
+local function dirt_sounds()
+    if default and default.node_sound_dirt_defaults then
+        return default.node_sound_dirt_defaults()
+    end
+    return {}
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -47,7 +58,7 @@ minetest.register_node("volcanic_soil:volcanic_soil", {
             },
         },
     },
-    sounds = default.node_sound_dirt_defaults()
+    sounds = dirt_sounds()
 })
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -107,7 +118,7 @@ minetest.register_node("volcanic_soil:volcanic_soil_tilled", {
             },
         },
     },
-    sounds = default.node_sound_dirt_defaults(),
+    sounds = dirt_sounds(),
 
     -- Initialise the cycle counter when a node is placed.
     -- When tilled via hoe the hoe calls core.set_node (no item consumed), so
@@ -249,7 +260,12 @@ minetest.register_on_dignode(function(pos, oldnode)
     local cycles = meta:get_int("volcanic_soil_cycles") - 1
 
     if cycles <= 0 then
-        minetest.set_node(below, {name = degradation_target()})
+        local target = degradation_target()
+        if target then
+            minetest.set_node(below, {name = target})
+        else
+            meta:set_int("volcanic_soil_cycles", 0)
+        end
     else
         meta:set_int("volcanic_soil_cycles", cycles)
     end

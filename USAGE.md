@@ -76,8 +76,10 @@ block's tooltip when you hover over it with a pointing device, or displayed
 on items you pick up (see below).
 
 When the counter reaches zero the soil converts automatically to
-`farming:soil_wet` (or `default:dirt` if the farming mod is not loaded) — a
-normal tilled plot, still farmable.
+`farming:soil_wet` when available, or `default:dirt` if that node exists.
+If neither fallback node is present in the current game, the tilled volcanic
+soil remains in place with its fertility exhausted instead of swapping to an
+invalid node.
 
 Harvesting an **immature** crop (breaking a growing-stage plant before it
 matures) does **not** consume a cycle.
