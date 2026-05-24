@@ -6,6 +6,14 @@ Both natural and tilled volcanic soil can accelerate sapling growth, while the t
 
 Volcanic soil can be obtained by smelting compressed cobble when `moreblocks` is installed, or by processing stone in Lava Crucible when that mod is present.
 
+## Quick Start
+
+1. Obtain volcanic soil by smelting compressed cobble (with `moreblocks`) or using Lava Crucible.
+2. Place volcanic soil and till it with a hoe to create `volcanic_soil:volcanic_soil_tilled`.
+3. Plant crops or saplings on top to get faster growth.
+4. After repeated mature crop harvests, tilled volcanic soil degrades back to regular soil.
+
+See [User's Guide](USAGE.md) for full details, settings, and progression tips.
 
 ## Dependencies
 

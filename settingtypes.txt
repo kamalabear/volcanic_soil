@@ -6,9 +6,27 @@
 volcanic_soil_fertility_cycles (Volcanic soil fertility cycles) int 5 1 100
 
 # Seconds between extra ABM growth ticks on tilled volcanic soil. Lower values
-# make crops grow faster; minimum 5.
-volcanic_soil_growth_boost_interval (Volcanic soil growth boost interval) int 30 5 300
+# make crops grow faster; minimum 1. Values near 1 can increase server load
+# on large farms.
+volcanic_soil_growth_boost_interval (Volcanic soil growth boost interval) int 1 1 300
+
+# Number of growth stages advanced per volcanic-soil boost tick. Higher values
+# make crops progress faster; set to 8 for near-instant growth on staged crops.
+volcanic_soil_growth_boost_steps (Volcanic soil growth stages per boost tick) int 1 1 8
 
 # Seconds between extra sapling-growth attempts on tilled volcanic soil. Lower
-# values make saplings grow faster; minimum 5.
-volcanic_soil_sapling_boost_interval (Volcanic soil sapling boost interval) int 20 5 300
+# values make saplings grow faster; minimum 1. Values near 1 can increase
+# server load when many saplings are active.
+volcanic_soil_sapling_boost_interval (Volcanic soil sapling boost interval) int 20 1 300
+
+# If true, growth boosts on tilled volcanic soil can progress crops without
+# requiring normal sunlight checks, including large cactus seedlings.
+volcanic_soil_bypass_light_check (Bypass crop sunlight checks on volcanic soil) bool true
+
+# Comma-separated Lua patterns for node names that are allowed to consume
+# volcanic soil fertility cycles when harvested by a player.
+volcanic_soil_harvest_cycle_allow_patterns (Harvest cycle allow patterns) string ^farming:,^x_farming:,^better_farming:,^default:papyrus$,^default:cactus$
+
+# Comma-separated Lua patterns for node names that must never consume
+# volcanic soil fertility cycles even if allowed by broader patterns.
+volcanic_soil_harvest_cycle_deny_patterns (Harvest cycle deny patterns) string _fruit$,_fruit_mark$,_seedling$

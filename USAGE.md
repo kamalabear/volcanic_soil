@@ -123,14 +123,22 @@ Add these settings to `minetest.conf`:
 | Setting | Default | Description |
 |---|---|---|
 | `volcanic_soil_fertility_cycles` | `5` | Full harvests before tilled soil degrades (min 1, max 100) |
-| `volcanic_soil_growth_boost_interval` | `30` | Seconds between extra growth ticks (min 5, max 300) |
-| `volcanic_soil_sapling_boost_interval` | `20` | Seconds between extra sapling growth attempts (min 5, max 300) |
+| `volcanic_soil_growth_boost_interval` | `1` | Seconds between extra growth ticks (min 1, max 300; lower values can increase server load on large farms) |
+| `volcanic_soil_growth_boost_steps` | `1` | Growth stages advanced per boost tick (min 1, max 8) |
+| `volcanic_soil_sapling_boost_interval` | `20` | Seconds between extra sapling growth attempts (min 1, max 300; lower values can increase server load with many saplings) |
+| `volcanic_soil_bypass_light_check` | `true` | If true, volcanic-soil boosts can progress crops (and large cactus seedlings from default/x_farming) without normal sunlight checks |
+| `volcanic_soil_harvest_cycle_allow_patterns` | `^farming:,^x_farming:,^better_farming:,^default:papyrus$,^default:cactus$` | Comma-separated Lua patterns for node names that can consume fertility cycles on player harvest |
+| `volcanic_soil_harvest_cycle_deny_patterns` | `_fruit$,_fruit_mark$,_seedling$` | Comma-separated Lua patterns that always block cycle consumption (applied before allow patterns) |
 
 **Example:**
 ```
 volcanic_soil_fertility_cycles = 8
-volcanic_soil_growth_boost_interval = 20
+volcanic_soil_growth_boost_interval = 1
+volcanic_soil_growth_boost_steps = 1
 volcanic_soil_sapling_boost_interval = 15
+volcanic_soil_bypass_light_check = true
+volcanic_soil_harvest_cycle_allow_patterns = ^farming:,^x_farming:,^better_farming:,^default:papyrus$,^default:cactus$
+volcanic_soil_harvest_cycle_deny_patterns = _fruit$,_fruit_mark$,_seedling$
 ```
 
 These settings are also exposed in the in-game settings editor under *Volcanic Soil*.
@@ -153,3 +161,20 @@ These settings are also exposed in the in-game settings editor under *Volcanic S
 **Advanced path:** Lava Crucible processing offers variable yields (1–9 per block) and bonus mineral dusts, rewarding more complex setup.
 
 Both recipes are kept available so players can choose their preferred method.
+
+### Future enhancement note
+
+One possible future upgrade is an instant-grow mode that triggers as soon as a
+seed or sapling is planted on volcanic soil. That would make the mod feel more
+like a high-speed fertile substrate, but it would also change balance more
+dramatically than the current faster-growth approach.
+
+Another future enhancement idea is random crop multiplication on harvest while
+using tilled volcanic soil (for example, occasional bonus yield drops). This
+would add a luck/progression layer but should be configurable so servers can
+tune economy impact.
+
+Because most node names are lowercase in practice, harvest pattern matching is
+currently case-sensitive. If mixed-case node names become common in modpacks,
+an optional case-insensitive matching mode could be added as a configuration
+toggle.

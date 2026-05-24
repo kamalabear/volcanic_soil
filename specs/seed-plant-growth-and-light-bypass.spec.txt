@@ -1,0 +1,80 @@
+SPEC: Volcanic Soil Seed/Plant Growth Targeting + Optional Light Bypass
+Date: 2026-05-24
+Status: IMPLEMENTED
+
+Goal
+- Make volcanic soil growth boosts work for timer-based crops (seed/plant groups), including vanilla farming cotton.
+- Add an optional setting to bypass sunlight requirements while crops are on tilled volcanic soil.
+- Add a tunable growth-stage multiplier per boost tick for near-instant crop growth.
+- Extend compatibility for large cactus seedlings (x_farming and default variants).
+
+Scope
+- volcanic_soil/volcanic_soil.lua
+- volcanic_soil/api.lua
+- volcanic_soil/settingtypes.txt
+- volcanic_soil/tests/api_spec.lua
+- volcanic_soil/USAGE.md
+
+Non-goals
+- No global changes to farming behavior outside volcanic soil.
+- No node ID or metadata key changes.
+
+Design
+1) Keep existing group:growing ABM
+- Preserve the current staged-crop boost path.
+- Add helper functions so staged increment logic can be reused by new ABMs.
+
+2) Add timer-crop ABM
+- nodenames: group:seed and group:plant
+- neighbors: volcanic_soil:volcanic_soil_tilled
+- interval/chance: same growth interval, chance 1
+- action:
+  - guard: ensure node sits directly on volcanic_soil:volcanic_soil_tilled
+  - if light bypass enabled: directly advance stage(s)
+  - else: trigger node timer (start(0)) if on_timer exists
+
+3) Add optional light bypass setting
+- Setting: volcanic_soil_bypass_light_check (default true)
+- Read into api.config and consume in ABM actions.
+- When true, skip light-gated growth by explicit stage advance for staged/timer crops.
+
+4) Add configurable growth speed multiplier
+- Setting: volcanic_soil_growth_boost_steps (default 1, min 1, max 8)
+- Apply to crop boost ABMs so each tick can advance multiple stages.
+
+5) Large cactus seedling compatibility
+- Add dedicated ABM for:
+  - x_farming:large_cactus_with_fruit_seedling
+  - default:large_cactus_seedling
+- On tilled volcanic soil:
+  - if bypass_light_check=true, call the matching grow function directly:
+    - x_farming.grow_large_cactus
+    - default.grow_large_cactus
+  - else, restart node timer with start(0) so original mod checks (including light) still apply.
+- Add sand group support on volcanic soil nodes so sand-gated checks pass.
+
+6) Harvest cycle safety
+- Restrict fertility-cycle decrement to player harvest digs only.
+- Ignore non-player/node-system digs to avoid accidental soil degradation during automated growth/replacement flows.
+- Add configurable Lua-pattern allow/deny lists for harvest cycle consumption:
+  - `volcanic_soil_harvest_cycle_allow_patterns`
+  - `volcanic_soil_harvest_cycle_deny_patterns`
+  Deny patterns are evaluated first.
+
+7) Docs/tests
+- Update setting entries in settingtypes.txt and USAGE config table.
+- Keep api config tests for bypass and growth step settings.
+
+Validation
+- luacheck volcanic_soil --config .luacheckrc passes with 0 warnings/errors.
+- busted in volcanic_soil passes.
+- Manual checks:
+  - farming:seed_cotton grows on tilled volcanic soil with timer-crop ABM.
+  - x_farming:large_cactus_with_fruit_seedling grows on tilled volcanic soil.
+  - default:large_cactus_seedling grows on tilled volcanic soil.
+  - with bypass=true, cactus seedlings are not blocked by sunlight requirement.
+  - soil does not degrade from non-player growth side effects.
+
+Risks
+- Some mods may have custom timer side effects; direct grow calls are limited to known cactus seedling nodes.
+- For plants without next_plant/numeric suffix, direct stage bypass may have no effect; timer path still applies when bypass=false.

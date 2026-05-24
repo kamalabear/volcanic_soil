@@ -1,0 +1,25 @@
+SPEC: Volcanic Soil 1s Growth Interval
+Date: 2026-05-24
+Status: IMPLEMENTED
+
+Goal
+- Allow volcanic crop burst interval to go as low as 1 second.
+- Allow volcanic sapling burst interval to go as low as 1 second.
+- Set defaults to a "visible fast growth" profile where stage progression is rapid but still visible.
+
+Changes
+- Lower growth interval clamp minimum from 5 to 1.
+- Lower sapling interval clamp minimum from 5 to 1.
+- Set default growth interval to 1 second.
+- Set default growth steps to 1 stage per tick (preserves visible stage progression).
+- Keep existing safety documentation and add explicit performance caveat for large farms.
+
+Files
+- volcanic_soil/api.lua
+- volcanic_soil/settingtypes.txt
+- volcanic_soil/USAGE.md
+- volcanic_soil/tests/api_spec.lua
+
+Validation
+- luacheck volcanic_soil --config .luacheckrc passes.
+- busted (volcanic_soil) passes.

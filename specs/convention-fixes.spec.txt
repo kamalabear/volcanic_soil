@@ -1,0 +1,253 @@
+SPEC: volcanic_soil — Convention Fixes
+Date: 2026-05-24
+Status: PLANNED
+
+────────────────────────────────────────────────────────────────────────────────
+GOAL AND SCOPE
+────────────────────────────────────────────────────────────────────────────────
+
+Bring volcanic_soil into full compliance with the shared workspace conventions
+in CONTRIBUTING.md. No gameplay or balance changes. No new features.
+
+Files in scope:
+  volcanic_soil/volcanic_soil.lua   — main code changes
+  volcanic_soil/init.lua            — logging change
+  volcanic_soil/mod.conf            — dependency declarations
+  volcanic_soil/api.lua             — NEW: extracted pure logic
+  volcanic_soil/tests/              — NEW: unit test tree
+  volcanic_soil/tests/api_spec.lua  — NEW: busted test file
+  volcanic_soil/.busted             — NEW: busted config
+  volcanic_soil/README.md           — user guide addition
+
+────────────────────────────────────────────────────────────────────────────────
+ASSUMPTIONS AND CONSTRAINTS
+────────────────────────────────────────────────────────────────────────────────
+
+- `volcanic_soil.config` is not part of a public cross-mod API; it is only read
+  inside volcanic_soil.lua itself. Converting it to a local is safe.
+- No other mod in the workspace reads `volcanic_soil.*` globals.
+- Save compatibility must be preserved: node names and metadata keys are
+  unchanged by all fixes below.
+- Lint must pass with zero warnings after all changes.
+
+────────────────────────────────────────────────────────────────────────────────
+IMPLEMENTATION STEPS
+────────────────────────────────────────────────────────────────────────────────
+
+STEP 1 — Convert `volcanic_soil` global to local  [volcanic_soil.lua:5-11]
+  HIGH
+
+  Replace:
+    volcanic_soil = volcanic_soil or {}
+    volcanic_soil.config = { ... }
+
+  With:
+    local volcanic_soil = {}
+    volcanic_soil.config = { ... }
+
+  The `or {}` fallback guard was only needed because this was a global that
+  could have been pre-declared by another mod. As a local it can be a plain
+  table literal.
+
+  Update the four `volcanic_soil.config.*` access sites (lines 129, 178, 216)
+  — no text change needed; they already refer to the local variable.
+
+  Validation: luacheck warnings 5:1 "setting non-standard global",
+  5:17 "accessing undefined variable", and 7:1 "mutating non-standard global"
+  must be gone.
+
+────────────────────────────────────────────────────────────────────────────────
+
+STEP 2 — Remove `minetest.register_craft` monkey-patch  [volcanic_soil.lua:278-284]
+  HIGH
+
+  Delete these 4 lines (the `local craft` alias and the wrapper function):
+    local craft = minetest.register_craft
+    -- NOTE: This wrapper was present in the original file and is preserved as-is.
+    function minetest.register_craft(a)
+        return craft(a)
+    end
+
+  Replace the downstream call that still uses the alias — it now calls
+  minetest.register_craft directly:
+    if minetest.get_modpath("moreblocks") then
+        minetest.register_craft({
+            type     = "cooking",
+            output   = "volcanic_soil:volcanic_soil 8",
+            recipe   = "moreblocks:cobble_compressed",
+            cooktime = 1,
+        })
+    end
+
+  No behaviour change. The wrapper was a no-op pass-through.
+
+  Validation: no `function minetest.register_craft` in the file; luacheck
+  clean; smoke test still starts with zero errors.
+
+────────────────────────────────────────────────────────────────────────────────
+
+STEP 3 — Declare `default` and `ethereal` in mod.conf  [mod.conf:5]
+  HIGH
+
+  Change:
+    optional_depends = farming, x_farming, moreblocks
+
+  To:
+    optional_depends = farming, x_farming, moreblocks, default, ethereal
+
+  Also remove the empty `depends =` line (or replace with `depends =` omitted
+  entirely, since no hard dependency exists).
+
+  Validation: luacheck warnings at lines 27, 28, 235, 236, 237 for
+  "accessing undefined variable default/ethereal" must be gone.
+  Note: luacheck reads globals from mod.conf optional_depends via .luacheckrc
+  read_globals. Confirm the workspace .luacheckrc already handles this; if not,
+  also add them to the mod-level luacheck globals annotation.
+
+────────────────────────────────────────────────────────────────────────────────
+
+STEP 4 — Fix remaining lint warnings  [volcanic_soil.lua]
+  MEDIUM
+
+  4a. Long lines (lines 8–10, >100 chars):
+      Wrap the three config reads across two lines each, e.g.:
+        fertility_cycles =
+            tonumber(minetest.settings:get("volcanic_soil_fertility_cycles")) or 5,
+
+  4b. Unused argument `placer` (line 134, after_place_node):
+      Rename to `_placer` (underscore prefix signals intentional non-use).
+
+  4c. Unused argument `oldnode` (line 144, after_dig_node):
+      Rename to `_oldnode`.
+
+  Validation: `luacheck volcanic_soil/ --config .luacheckrc` reports
+  0 warnings, 0 errors.
+
+────────────────────────────────────────────────────────────────────────────────
+
+STEP 5 — Replace `print()` with `minetest.log()`  [init.lua:3]
+  LOW
+
+  Change:
+    print("[Volcanic Soil] Loading...")
+
+  To:
+    minetest.log("action", "[volcanic_soil] loaded")
+
+  Validation: grep for `print(` returns no results in init.lua.
+
+────────────────────────────────────────────────────────────────────────────────
+
+STEP 6 — Extract pure logic into api.lua  [NEW: api.lua]
+  MEDIUM
+
+  Move the following functions out of volcanic_soil.lua into a new api.lua:
+
+    - degradation_target()    — pure lookup, no side effects
+    - dirt_sounds()           — pure capability check
+
+  Move the config table construction into api.lua as well:
+    - volcanic_soil.config = { ... }  — pure settings read
+
+  api.lua should return a table:
+    local api = {}
+    api.config = { ... }
+    api.degradation_target = function() ... end
+    api.dirt_sounds = function() ... end
+    return api
+
+  In volcanic_soil.lua, replace usages:
+    local vs = dofile(modpath .. "/api.lua")
+    -- then use vs.config, vs.degradation_target(), vs.dirt_sounds()
+
+  Update init.lua to load api.lua before volcanic_soil.lua, or have
+  volcanic_soil.lua load it internally (internal load is simpler and avoids
+  ordering concerns in init.lua).
+
+  Validation: volcanic_soil.lua contains no function bodies for the moved
+  functions. Smoke test still boots clean.
+
+────────────────────────────────────────────────────────────────────────────────
+
+STEP 7 — Add unit tests  [NEW: tests/api_spec.lua, .busted]
+  MEDIUM
+
+  Prerequisite: Step 6 complete.
+
+  Create .busted at volcanic_soil root:
+    return {
+      default = {
+        pattern = "_spec",
+        lpath = "tests/helpers",
+      }
+    }
+
+  Create tests/helpers/minetest_mock.lua (or symlink/copy from workspace
+  test-helpers if one exists — check test-helpers/ at workspace root first).
+
+  Create tests/api_spec.lua covering:
+
+    describe("degradation_target", function()
+      it("returns farming:soil_wet when registered", ...)
+      it("falls back to default:dirt when soil_wet absent", ...)
+      it("returns nil when neither node is registered", ...)
+    end)
+
+    describe("config", function()
+      it("reads fertility_cycles from settings", ...)
+      it("defaults fertility_cycles to 5 when unset", ...)
+      it("clamps growth_boost_interval to minimum 5", ...)
+    end)
+
+  Validation: `busted` from volcanic_soil/ exits 0 with all specs passing.
+
+────────────────────────────────────────────────────────────────────────────────
+
+STEP 8 — Add inline user guide to README  [README.md]
+  LOW
+
+  The README currently defers entirely to USAGE.md. Add a short "Quick Start"
+  section immediately after the opening description (before Dependencies), e.g.:
+
+    ## Quick Start
+    1. Obtain volcanic soil (smelt compressed cobble, or use a Lava Crucible).
+    2. Place it and till with a hoe to activate full fertility.
+    3. Plant any crop — it grows faster and works with all x_farming crops.
+    4. After N harvests (default 5) the soil degrades to normal wet soil.
+    See [USAGE.md](USAGE.md) for full details.
+
+  Validation: README.md contains a practical user-facing how-to near the top
+  that does not require opening a second file to understand basic use.
+
+────────────────────────────────────────────────────────────────────────────────
+VALIDATION AND ACCEPTANCE CRITERIA
+────────────────────────────────────────────────────────────────────────────────
+
+After all steps, the following must hold:
+
+  [ ] luacheck volcanic_soil/ --config .luacheckrc → 0 warnings, 0 errors
+  [ ] busted (from volcanic_soil/) → all specs pass
+  [ ] Smoke test (Smoke Test (Docker) task) boots with no Lua errors in log
+  [ ] No `print(` calls in init.lua
+  [ ] No bare global assignments in volcanic_soil.lua
+  [ ] No `function minetest.register_craft` in any mod file
+  [ ] mod.conf lists default and ethereal in optional_depends
+  [ ] README.md has a Quick Start or equivalent user guide near the top
+  [ ] In-game: till volcanic soil, plant a crop, harvest N times, confirm
+      soil degrades to farming:soil_wet (or default:dirt fallback)
+
+────────────────────────────────────────────────────────────────────────────────
+RISKS AND FOLLOW-UP
+────────────────────────────────────────────────────────────────────────────────
+
+- Risk: if any other mod in this workspace reads `volcanic_soil.config` as a
+  global, Step 1 will break it. Search workspace for `volcanic_soil\.config`
+  before merging.
+- Risk: CONTRIBUTING.md says luacheck globals are declared via .luacheckrc
+  read_globals sourced from mod.conf. Confirm workspace .luacheckrc handles
+  optional_depends before assuming Step 3 alone resolves the luacheck warnings
+  for default/ethereal. If not, add explicit --globals flags or a mod-level
+  .luacheckrc.
+- Follow-up: consider adding a `lava_crucible` optional dependency to mod.conf
+  now that USAGE.md documents that integration path; this is out of scope here
+  but would close the dependency gap.
