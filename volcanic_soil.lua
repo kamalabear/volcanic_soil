@@ -15,21 +15,39 @@ end
 
 -- Get the maximum stage count for a crop from the farming mod's registered plants
 local function get_max_stage_for_node(node_name)
-    if not rawget(_G, "farming") or not rawget(_G, "farming").registered_plants then
-        return nil
+    local farming_mod = rawget(_G, "farming")
+    if farming_mod and farming_mod.registered_plants then
+        -- Extract crop base from node name (e.g., "better_farming:jute" from "better_farming:jute_3")
+        local base = node_name:match("^(.-)%d+$")
+        if base then
+            local plant_info = farming_mod.registered_plants[base]
+            if plant_info and plant_info.steps then
+                minetest.log("action", "[volcanic_soil] get_max_stage_for_node: " .. node_name .. " -> base=" .. base .. ", max_steps=" .. plant_info.steps .. " (from farming.registered_plants)")
+                return plant_info.steps
+            end
+        end
     end
 
-    -- Extract crop base from node name (e.g., "better_farming:jute" from "better_farming:jute_3")
+    -- Fallback: count existing stage nodes by trying to find the highest numbered stage
     local base = node_name:match("^(.-)%d+$")
-    if not base then
-        return nil
+    if base then
+        local max_stage = 1
+        for stage = 1, 20 do  -- Check up to stage 20
+            local stage_node = base .. tostring(stage)
+            if minetest.registered_nodes[stage_node] then
+                max_stage = stage
+            else
+                -- Stop at first non-existent stage
+                break
+            end
+        end
+        if max_stage > 1 then
+            minetest.log("action", "[volcanic_soil] get_max_stage_for_node: " .. node_name .. " -> base=" .. base .. ", max_stages=" .. max_stage .. " (counted from registered_nodes)")
+            return max_stage
+        end
     end
 
-    local plant_info = rawget(_G, "farming").registered_plants[base]
-    if plant_info and plant_info.steps then
-        return plant_info.steps
-    end
-
+    minetest.log("warning", "[volcanic_soil] get_max_stage_for_node: could not determine max stage for " .. node_name)
     return nil
 end
 
