@@ -3,7 +3,7 @@
 ## Bug 1: Crops disappear when grown beyond their stage limit
 
 Date: 2026-06-07
-Status: Open
+Status: Resolved - Fixed
 Severity: High
 
 ### Summary
@@ -78,5 +78,36 @@ When the next stage doesn't exist and the function returns `false`, the crop nod
 - Crop disappears without drops
 
 **Solution**: Before incrementing stage, check the farming mod's stage limit for that crop and stop at the final stage.
+
+## Resolution
+
+**Fixed in commit**: 7d327c3
+**Date Fixed**: 2026-06-07
+
+### Changes Made
+
+1. **New function `get_max_stage_for_node(node_name)`** (volcanic_soil.lua:16-69)
+   - Extracts crop base name from node (handles both `jute_3` and `cotton3` formats)
+   - Primary path: Queries `farming.registered_plants[base].steps` for authoritative max stage
+   - Fallback: Directly counts registered stage nodes (handles crops that don't populate farming API)
+   - Returns nil if unable to determine (triggers safe failure mode)
+
+2. **Enhanced `advance_growth_stage()` logic** (volcanic_soil.lua:71-103)
+   - Now calls `get_max_stage_for_node()` to determine maximum stage
+   - **Critical safeguard**: Refuses to advance if max stage cannot be determined
+   - Checks `if current_stage >= max_stage` before attempting increment
+   - Logs when crop reaches final stage: "crop X at final stage Y, not advancing"
+
+3. **Test coverage** (tests/crop_stage_advancement_spec.lua)
+   - 11 unit tests covering jute (3 stages), millet (3 stages), and edge cases
+   - All tests passing
+
+### Validation
+
+✅ Unit tests: 11 successes / 0 failures / 0 errors
+✅ Manual testing: Crops stop at stage 3, remain harvestable
+✅ Log shows: "crop at final stage 3, not advancing" when limit reached
+✅ No more "jute_3 → jute_4" advancement attempts
+✅ Crops remain visible and harvestable at final stage
 
 ---
