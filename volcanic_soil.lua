@@ -15,6 +15,7 @@ end
 
 local function advance_growth_stage(pos, node, ndef)
     if ndef and ndef.next_plant and minetest.registered_nodes[ndef.next_plant] then
+        minetest.log("action", string.format("[volcanic_soil] advance_growth_stage: swapping %s -> %s at %d,%d,%d", node.name, ndef.next_plant, pos.x, pos.y, pos.z))
         minetest.swap_node(pos, {name = ndef.next_plant})
         return true
     end
@@ -26,6 +27,7 @@ local function advance_growth_stage(pos, node, ndef)
 
     local next_name = base .. tostring(tonumber(stage_str) + 1)
     if minetest.registered_nodes[next_name] then
+        minetest.log("action", string.format("[volcanic_soil] advance_growth_stage: advancing %s -> %s at %d,%d,%d", node.name, next_name, pos.x, pos.y, pos.z))
         minetest.set_node(pos, {name = next_name})
         return true
     end
@@ -223,6 +225,7 @@ minetest.register_abm({
             return
         end
 
+        minetest.log("action", string.format("[volcanic_soil] growth_boost ABM at %d,%d,%d — advancing %d steps", pos.x, pos.y, pos.z, volcanic_soil.config.growth_boost_steps))
         advance_growth_steps(pos, volcanic_soil.config.growth_boost_steps)
     end,
 })
@@ -252,11 +255,13 @@ minetest.register_abm({
         end
 
         if volcanic_soil.config.bypass_light_check then
+            minetest.log("action", string.format("[volcanic_soil] timer crop boost (bypass) at %d,%d,%d — advancing %d steps", pos.x, pos.y, pos.z, volcanic_soil.config.growth_boost_steps))
             advance_growth_steps(pos, volcanic_soil.config.growth_boost_steps)
             return
         end
 
         if ndef.on_timer then
+            minetest.log("action", string.format("[volcanic_soil] timer crop boost: restarting timer for %s at %d,%d,%d", node.name, pos.x, pos.y, pos.z))
             minetest.get_node_timer(pos):start(0)
         end
     end,
@@ -377,6 +382,7 @@ minetest.register_on_dignode(function(pos, oldnode, digger)
 
     local meta   = minetest.get_meta(below)
     local cycles = meta:get_int("volcanic_soil_cycles") - 1
+    minetest.log("action", string.format("[volcanic_soil] on_dignode: harvested %s at %d,%d,%d — cycles before=%d, after=%d", oldnode.name, below.x, below.y, below.z, meta:get_int("volcanic_soil_cycles"), cycles))
 
     if cycles <= 0 then
         local target = volcanic_soil.degradation_target(minetest.registered_nodes)
