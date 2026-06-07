@@ -43,7 +43,10 @@ when a player moves the block.
 minetest.register_node("volcanic_soil:volcanic_soil", {
     description = "Volcanic Soil",
     is_ground_content = true,
-    groups = {crumbly=3, soil=1, spreading_dirt_type=1},
+    groups = {
+        crumbly=3, soil=1, sand=1, spreading_dirt_type=1,
+        field=1, grassland=1, desert=1, underground=1, ice_fishing=1,
+    },
     stack_max = 99,
     soil = {
         base = "volcanic_soil:volcanic_soil",
@@ -56,6 +59,10 @@ minetest.register_node("volcanic_soil:volcanic_soil", {
 ```
 
 **Key points:**
+
+- **Fertility groups** (`field`, `grassland`, `desert`, `underground`, `ice_fishing`) allow crops to be planted directly on untilled soil when `require_tilling = false` (default).
+- Hoes can till this node to convert it to the tilled form (via `ndef.soil.dry`).
+- Contains both untilled and tilled forms in node metadata-aware operations (see cycle persistence below).
 
 ### `volcanic_soil:volcanic_soil_tilled` (fertilized / tilled)
 
@@ -112,18 +119,19 @@ minetest.register_abm({
     label     = "Volcanic soil growth boost",
     nodenames = {"group:growing"},
     neighbors = {"volcanic_soil:volcanic_soil_tilled"},
-    interval  = volcanic_soil.config.growth_boost_interval,  -- default 30 s
+    interval  = volcanic_soil.config.growth_boost_interval,  -- default 1 s
     chance    = 1,
     action    = function(pos) ... end,
 })
 ```
 
 The action:
-1. Verifies `minetest.get_node({pos.x, pos.y-1, pos.z}).name == "volcanic_soil:volcanic_soil_tilled"`.
-2. Parses the crop node name with `node.name:match("^(.-)(%d+)$")` to extract base and stage number.
-3. If `minetest.registered_nodes[base .. (stage+1)]` exists, calls `minetest.set_node` to advance the crop one stage.
+1. Calls `is_tilled_volcanic_soil(pos)` to check if the crop is on volcanic soil.
+   - If `require_tilling = false`: Accepts both untilled and tilled soil.
+   - If `require_tilling = true`: Only accepts tilled soil.
+2. Advances the crop `volcanic_soil.config.growth_boost_steps` stages (default 1).
 
-This works for all mods that follow the `modname:cropname_N` naming convention (asuna farming, x_farming, better_farming). Seeds (which typically don't have the `growing` group) are unaffected.
+This works for all mods that follow the `modname:cropname_N` naming convention (asuna farming, x_farming, better_farming). Seeds (which don't have the `growing` group) are unaffected.
 
 
 ## Harvest cycle counter
@@ -167,17 +175,41 @@ Behavior:
 
 ## Configuration
 
-Loaded at mod startup in `volcanic_soil.lua`:
+Loaded at mod startup in `volcanic_soil.lua` via `api.lua`:
 
 ```lua
 volcanic_soil.config = {
     fertility_cycles      = tonumber(minetest.settings:get("volcanic_soil_fertility_cycles"))      or 5,
-    growth_boost_interval = tonumber(minetest.settings:get("volcanic_soil_growth_boost_interval")) or 30,
+    growth_boost_interval = tonumber(minetest.settings:get("volcanic_soil_growth_boost_interval")) or 1,
+    growth_boost_steps    = tonumber(minetest.settings:get("volcanic_soil_growth_boost_steps"))    or 1,
     sapling_boost_interval = tonumber(minetest.settings:get("volcanic_soil_sapling_boost_interval")) or 20,
+    bypass_light_check    = minetest.settings:get_bool("volcanic_soil_bypass_light_check", true),
+    require_tilling       = minetest.settings:get_bool("volcanic_soil_require_tilling", false),
 }
 ```
 
-Settings are also declared in `settingtypes.txt` for the in-game editor.
+**Key settings:**
+
+- `require_tilling` (bool, default `false`): If false, crops can grow on natural volcanic soil and growth boost applies to both soil types. If true, only tilled soil provides growth boost (strict mode, original behavior).
+
+- `growth_boost_interval` and `growth_boost_steps`: Control the speed of crop acceleration.
+
+Settings are declared in `settingtypes.txt` for the in-game editor.
+
+## Untilled soil farming
+
+When `require_tilling = false` (default), untilled volcanic soil has fertility groups:
+
+```lua
+groups = {
+    crumbly=3, soil=1, sand=1, spreading_dirt_type=1,
+    field=1, grassland=1, desert=1, underground=1, ice_fishing=1,
+}
+```
+
+This allows crops to be planted directly on untilled soil. The `is_tilled_volcanic_soil()` check in the ABM logic accepts both untilled and tilled soil when the setting is disabled.
+
+When `require_tilling = true` (strict mode), the fertility groups are NOT added to untilled soil, so crops cannot be planted until the soil is tilled.
 
 
 ## Texture and animation

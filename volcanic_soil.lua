@@ -10,7 +10,19 @@ local x_farming = rawget(_G, "x_farming")
 
 local function is_tilled_volcanic_soil(pos)
     local below = {x = pos.x, y = pos.y - 1, z = pos.z}
-    return minetest.get_node(below).name == "volcanic_soil:volcanic_soil_tilled"
+    local below_node = minetest.get_node(below).name
+    
+    -- Tilled soil always counts
+    if below_node == "volcanic_soil:volcanic_soil_tilled" then
+        return true
+    end
+    
+    -- If require_tilling is false, untilled soil also counts for growth boost
+    if not volcanic_soil.config.require_tilling and below_node == "volcanic_soil:volcanic_soil" then
+        return true
+    end
+    
+    return false
 end
 
 -- Get the maximum stage count for a crop from the farming mod's registered plants
@@ -153,7 +165,11 @@ end
 minetest.register_node("volcanic_soil:volcanic_soil", {
     description = "Volcanic Soil",
     is_ground_content = true,
-    groups = {crumbly=3, soil=1, sand=1, spreading_dirt_type=1},
+    groups = {
+        crumbly=3, soil=1, sand=1, spreading_dirt_type=1,
+        -- x_farming fertility groups (covers grassland, desert, underground, ice_fishing crops)
+        field=1, grassland=1, desert=1, underground=1, ice_fishing=1,
+    },
     stack_max = 99,
     soil = {
         base = "volcanic_soil:volcanic_soil",

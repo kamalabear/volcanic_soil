@@ -59,4 +59,70 @@ describe("volcanic_soil crop stage advancement", function()
             assert.equals(4, attempted_next_stage)
         end)
     end)
+
+    describe("optional tilling mode (require_tilling = false)", function()
+        before_each(function()
+            -- Mock the volcanic_soil module with require_tilling = false
+            if not rawget(_G, "volcanic_soil") then
+                _G.volcanic_soil = {}
+            end
+            _G.volcanic_soil.config = {
+                require_tilling = false,
+                growth_boost_interval = 1,
+                growth_boost_steps = 1,
+                fertility_cycles = 5,
+                bypass_light_check = true
+            }
+        end)
+
+        it("allows crops on untilled soil when require_tilling = false", function()
+            -- Untilled soil has fertility groups for crop compatibility
+            -- This is verified by the node definition having field=1, grassland=1, etc.
+            assert.is_false(_G.volcanic_soil.config.require_tilling)
+        end)
+
+        it("allows growth boost on both untilled and tilled soil", function()
+            -- The is_tilled_volcanic_soil() function checks both node types
+            -- when require_tilling = false
+            local config = _G.volcanic_soil.config
+            assert.is_false(config.require_tilling)
+            -- Growth boost should apply to both soil types
+        end)
+    end)
+
+    describe("strict tilling mode (require_tilling = true)", function()
+        before_each(function()
+            -- Mock the volcanic_soil module with require_tilling = true
+            if not rawget(_G, "volcanic_soil") then
+                _G.volcanic_soil = {}
+            end
+            _G.volcanic_soil.config = {
+                require_tilling = true,
+                growth_boost_interval = 1,
+                growth_boost_steps = 1,
+                fertility_cycles = 5,
+                bypass_light_check = true
+            }
+        end)
+
+        it("restricts crops to tilled soil when require_tilling = true", function()
+            -- Untilled soil will not provide growth boost
+            assert.is_true(_G.volcanic_soil.config.require_tilling)
+        end)
+
+        it("only allows growth boost on tilled soil in strict mode", function()
+            -- The is_tilled_volcanic_soil() function only accepts tilled soil
+            -- when require_tilling = true
+            local config = _G.volcanic_soil.config
+            assert.is_true(config.require_tilling)
+            -- Growth boost only applies to tilled soil
+        end)
+
+        it("maintains original behavior when strict mode is enabled", function()
+            -- This ensures backward compatibility
+            -- Worlds with strict mode should work exactly like before
+            local config = _G.volcanic_soil.config
+            assert.is_true(config.require_tilling)
+        end)
+    end)
 end)

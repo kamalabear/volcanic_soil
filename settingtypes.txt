@@ -30,3 +30,8 @@ volcanic_soil_harvest_cycle_allow_patterns (Harvest cycle allow patterns) string
 # Comma-separated Lua patterns for node names that must never consume
 # volcanic soil fertility cycles even if allowed by broader patterns.
 volcanic_soil_harvest_cycle_deny_patterns (Harvest cycle deny patterns) string _fruit$,_fruit_mark$,_seedling$
+
+# If false (default), crops can be planted directly on volcanic soil without
+# tilling, and both untilled and tilled soil provide growth boost. If true,
+# crops can only be planted on tilled soil (strict mode, original behavior).
+volcanic_soil_require_tilling (Require tilling before crop growth) bool false

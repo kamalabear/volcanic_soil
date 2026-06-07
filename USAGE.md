@@ -45,13 +45,58 @@ See the Lava Crucible documentation for full details.
 
 ---
 
-## Farming workflow
+## Farming modes
 
-### 1. Till the soil
+Volcanic Soil supports two different farming modes:
+
+### Mode 1: Convenient (default — `volcanic_soil_require_tilling = false`)
+
+In this mode, tilling is **optional**:
+
+- **Plant directly** on natural volcanic soil without using a hoe
+- Crops grow with the same speed boost as tilled soil
+- Natural soil provides unlimited crops
+- **Tilling is optional** — if you till, fertility cycles are tracked (5 harvests by default)
+
+**Best for:** Casual farming, experimentation, and early-game setup.
+
+**Workflow:**
+1. Place volcanic soil
+2. Plant crops directly
+3. Crops grow fast without any extra setup
+4. (Optional) Till with hoe to enable fertility tracking and get harvest limits
+
+### Mode 2: Strict (optional — `volcanic_soil_require_tilling = true`)
+
+In this mode, tilling is **required**:
+
+- Crops **cannot** be planted on natural volcanic soil
+- Must till with a hoe first to create tilled soil
+- Only tilled soil provides growth boost
+- Tilled soil tracks fertility cycles (default 5 harvests)
+
+**Best for:** Resource management, performance-sensitive servers, and long-term survival gameplay.
+
+**Workflow:**
+1. Place volcanic soil
+2. Till with hoe to create tilled soil
+3. Plant crops (must be on tilled soil)
+4. Crops grow fast on tilled soil only
+5. After 5 harvests, soil degrades to regular dirt/soil
+
+---
+
+## Farming workflow (default mode)
+
+### 1. Till the soil (optional)
 
 Right-click `volcanic_soil:volcanic_soil` with any hoe. It converts to
 `volcanic_soil:volcanic_soil_tilled` and starts with a full fertility counter
 (default: 5 cycles, configurable — see *Configuration* below).
+
+This step is **optional** in default mode. Crops will grow on untilled soil with
+the same speed boost. Tilling is only needed if you want to track fertility cycles
+and have soil degrade after repeated harvests.
 
 ### 2. Plant and harvest normally
 
@@ -122,6 +167,7 @@ Add these settings to `minetest.conf`:
 
 | Setting | Default | Description |
 |---|---|---|
+| `volcanic_soil_require_tilling` | `false` | If false (default), crops can grow on natural volcanic soil and tilling is optional. If true, crops require tilled soil (strict mode, original behavior) |
 | `volcanic_soil_fertility_cycles` | `5` | Full harvests before tilled soil degrades (min 1, max 100) |
 | `volcanic_soil_growth_boost_interval` | `1` | Seconds between extra growth ticks (min 1, max 300; lower values can increase server load on large farms) |
 | `volcanic_soil_growth_boost_steps` | `1` | Growth stages advanced per boost tick (min 1, max 8) |
@@ -132,6 +178,7 @@ Add these settings to `minetest.conf`:
 
 **Example:**
 ```
+volcanic_soil_require_tilling = false
 volcanic_soil_fertility_cycles = 8
 volcanic_soil_growth_boost_interval = 1
 volcanic_soil_growth_boost_steps = 1

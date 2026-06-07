@@ -64,6 +64,7 @@ api.config = {
     growth_boost_steps = read_int_setting("volcanic_soil_growth_boost_steps", 1, 1, 8),
     sapling_boost_interval = read_int_setting("volcanic_soil_sapling_boost_interval", 20, 1, 300),
     bypass_light_check = read_bool_setting("volcanic_soil_bypass_light_check", true),
+    require_tilling = read_bool_setting("volcanic_soil_require_tilling", false),
     harvest_cycle_allow_patterns = read_pattern_list_setting(
         "volcanic_soil_harvest_cycle_allow_patterns",
         default_harvest_cycle_allow_patterns

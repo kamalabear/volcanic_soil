@@ -2,16 +2,16 @@
 
 Adds a fertile, animated volcanic soil block that serves as a unified output for multiple acquisition paths. Volcanic Soil is shovel-mined and spreads like dirt, making it useful for building fertile terrain or decorating landscapes.
 
-Both natural and tilled volcanic soil can accelerate sapling growth, while the tilled form also accelerates crop growth and tracks fertility decay over harvest cycles.
+Both natural and tilled volcanic soil can accelerate crop and sapling growth. The tilled form also tracks fertility decay over harvest cycles, making it a limited resource for long-term farming.
 
 Volcanic soil can be obtained by smelting compressed cobble when `moreblocks` is installed, or by processing stone in Lava Crucible when that mod is present.
 
 ## Quick Start
 
 1. Obtain volcanic soil by smelting compressed cobble (with `moreblocks`) or using Lava Crucible.
-2. Place volcanic soil and till it with a hoe to create `volcanic_soil:volcanic_soil_tilled`.
-3. Plant crops or saplings on top to get faster growth.
-4. After repeated mature crop harvests, tilled volcanic soil degrades back to regular soil.
+2. Plant crops or saplings directly on volcanic soil for faster growth (tilling is optional).
+3. Optionally till with a hoe to track fertility cycles—tilled soil degrades after repeated harvests.
+4. In strict mode (`volcanic_soil_require_tilling = true`), tilling is required before planting.
 
 See [User's Guide](USAGE.md) for full details, settings, and progression tips.
 
