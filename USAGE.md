@@ -162,7 +162,7 @@ These settings are also exposed in the in-game settings editor under *Volcanic S
 
 Both recipes are kept available so players can choose their preferred method.
 
-### Future enhancement note
+## Future enhancement notes
 
 One possible future upgrade is an instant-grow mode that triggers as soon as a
 seed or sapling is planted on volcanic soil. That would make the mod feel more
@@ -178,3 +178,5 @@ Because most node names are lowercase in practice, harvest pattern matching is
 currently case-sensitive. If mixed-case node names become common in modpacks,
 an optional case-insensitive matching mode could be added as a configuration
 toggle.
+
+Add a toggle for disabling tilled state and simply growing crops on untilled volcanic soil

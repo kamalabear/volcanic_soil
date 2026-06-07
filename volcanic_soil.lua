@@ -13,6 +13,26 @@ local function is_tilled_volcanic_soil(pos)
     return minetest.get_node(below).name == "volcanic_soil:volcanic_soil_tilled"
 end
 
+-- Get the maximum stage count for a crop from the farming mod's registered plants
+local function get_max_stage_for_node(node_name)
+    if not rawget(_G, "farming") or not rawget(_G, "farming").registered_plants then
+        return nil
+    end
+
+    -- Extract crop base from node name (e.g., "better_farming:jute" from "better_farming:jute_3")
+    local base = node_name:match("^(.-)%d+$")
+    if not base then
+        return nil
+    end
+
+    local plant_info = rawget(_G, "farming").registered_plants[base]
+    if plant_info and plant_info.steps then
+        return plant_info.steps
+    end
+
+    return nil
+end
+
 local function advance_growth_stage(pos, node, ndef)
     if ndef and ndef.next_plant and minetest.registered_nodes[ndef.next_plant] then
         minetest.log("action", string.format("[volcanic_soil] advance_growth_stage: swapping %s -> %s at %d,%d,%d", node.name, ndef.next_plant, pos.x, pos.y, pos.z))
@@ -25,7 +45,16 @@ local function advance_growth_stage(pos, node, ndef)
         return false
     end
 
-    local next_name = base .. tostring(tonumber(stage_str) + 1)
+    local current_stage = tonumber(stage_str)
+    local max_stage = get_max_stage_for_node(node.name)
+
+    -- Don't advance beyond the max stage defined in the farming system
+    if max_stage and current_stage >= max_stage then
+        minetest.log("action", string.format("[volcanic_soil] crop %s at final stage %d, not advancing at %d,%d,%d", node.name, current_stage, pos.x, pos.y, pos.z))
+        return false
+    end
+
+    local next_name = base .. tostring(current_stage + 1)
     if minetest.registered_nodes[next_name] then
         minetest.log("action", string.format("[volcanic_soil] advance_growth_stage: advancing %s -> %s at %d,%d,%d", node.name, next_name, pos.x, pos.y, pos.z))
         minetest.set_node(pos, {name = next_name})
