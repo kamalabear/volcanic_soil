@@ -17,8 +17,10 @@ end
 local function get_max_stage_for_node(node_name)
     local farming_mod = rawget(_G, "farming")
     if farming_mod and farming_mod.registered_plants then
-        -- Extract crop base from node name (e.g., "better_farming:jute" from "better_farming:jute_3")
-        local base = node_name:match("^(.-)%d+$")
+        -- Extract crop base from node name
+        -- For "better_farming:jute_3", extract "better_farming:jute"
+        -- For "farming:cotton_4", extract "farming:cotton"
+        local base = node_name:match("^(.+?)_?%d+$")  -- Match everything except trailing _digits
         if base then
             local plant_info = farming_mod.registered_plants[base]
             if plant_info and plant_info.steps then
@@ -28,21 +30,36 @@ local function get_max_stage_for_node(node_name)
         end
     end
 
-    -- Fallback: count existing stage nodes by trying to find the highest numbered stage
-    local base = node_name:match("^(.-)%d+$")
+    -- Fallback: count existing stage nodes, but skip aliases to air
+    -- This is safer than just checking registered_nodes, as aliases to air will have drawtype=none
+    local base = node_name:match("^(.+?)_?%d+$")
     if base then
-        local max_stage = 1
+        local max_stage = 0
         for stage = 1, 20 do  -- Check up to stage 20
-            local stage_node = base .. tostring(stage)
-            if minetest.registered_nodes[stage_node] then
-                max_stage = stage
+            local stage_node = base .. "_" .. tostring(stage)
+            -- Also try without underscore for vanilla farming nodes
+            local stage_node_alt = base .. tostring(stage)
+            
+            local node_def = minetest.registered_nodes[stage_node] or minetest.registered_nodes[stage_node_alt]
+            if node_def then
+                -- Skip aliases to air (they have no drawtype or are pointing to air)
+                if node_def.name and node_def.name ~= "air" then
+                    max_stage = stage
+                else
+                    -- Stop if we hit an air alias
+                    break
+                end
             else
-                -- Stop at first non-existent stage
+                -- Stop at first truly non-existent node
                 break
             end
         end
-        if max_stage > 1 then
-            minetest.log("action", "[volcanic_soil] get_max_stage_for_node: " .. node_name .. " -> base=" .. base .. ", max_stages=" .. max_stage .. " (counted from registered_nodes)")
+        if max_stage > 0 then
+            local final_node = base .. "_" .. tostring(max_stage)
+            if not minetest.registered_nodes[final_node] then
+                final_node = base .. tostring(max_stage)
+            end
+            minetest.log("action", "[volcanic_soil] get_max_stage_for_node: " .. node_name .. " -> base=" .. base .. ", max_stages=" .. max_stage .. " (counted from registered_nodes, skipping air aliases)")
             return max_stage
         end
     end
