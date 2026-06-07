@@ -15,56 +15,57 @@ end
 
 -- Get the maximum stage count for a crop from the farming mod's registered plants
 local function get_max_stage_for_node(node_name)
+    -- Try to extract base crop name from node name
+    -- Handle both "better_farming:jute_3" and "farming:cotton4" formats
+    local base
+    if node_name:find("_") then
+        -- Format: "better_farming:jute_3" -> extract "better_farming:jute"
+        base = node_name:match("^(.+)_%d+$")
+    else
+        -- Format: "farming:cotton4" -> extract "farming:cotton"
+        base = node_name:match("^(.+?)%d+$")
+    end
+    
+    if not base then
+        minetest.log("warning", "[volcanic_soil] could not parse base name from " .. node_name)
+        return nil
+    end
+
+    -- First, try farming API if available
     local farming_mod = rawget(_G, "farming")
-    if farming_mod and farming_mod.registered_plants then
-        -- Extract crop base from node name
-        -- For "better_farming:jute_3", extract "better_farming:jute"
-        -- For "farming:cotton_4", extract "farming:cotton"
-        local base = node_name:match("^(.+?)_?%d+$")  -- Match everything except trailing _digits
-        if base then
-            local plant_info = farming_mod.registered_plants[base]
-            if plant_info and plant_info.steps then
-                minetest.log("action", "[volcanic_soil] get_max_stage_for_node: " .. node_name .. " -> base=" .. base .. ", max_steps=" .. plant_info.steps .. " (from farming.registered_plants)")
-                return plant_info.steps
-            end
+    if farming_mod and farming_mod.registered_plants and farming_mod.registered_plants[base] then
+        local steps = farming_mod.registered_plants[base].steps
+        if steps then
+            minetest.log("action", "[volcanic_soil] max_stage for " .. node_name .. " = " .. steps .. " (from farming API)")
+            return steps
         end
     end
 
-    -- Fallback: count existing stage nodes, but skip aliases to air
-    -- This is safer than just checking registered_nodes, as aliases to air will have drawtype=none
-    local base = node_name:match("^(.+?)_?%d+$")
-    if base then
-        local max_stage = 0
-        for stage = 1, 20 do  -- Check up to stage 20
-            local stage_node = base .. "_" .. tostring(stage)
-            -- Also try without underscore for vanilla farming nodes
-            local stage_node_alt = base .. tostring(stage)
-            
-            local node_def = minetest.registered_nodes[stage_node] or minetest.registered_nodes[stage_node_alt]
-            if node_def then
-                -- Skip aliases to air (they have no drawtype or are pointing to air)
-                if node_def.name and node_def.name ~= "air" then
-                    max_stage = stage
-                else
-                    -- Stop if we hit an air alias
-                    break
-                end
-            else
-                -- Stop at first truly non-existent node
-                break
-            end
+    -- Fallback: directly count existing stages by checking registered_nodes
+    -- This handles crops that don't populate farming.registered_plants
+    local max_stage = 0
+    for stage = 1, 20 do
+        local test_node
+        if node_name:find("_") then
+            test_node = base .. "_" .. stage
+        else
+            test_node = base .. stage
         end
-        if max_stage > 0 then
-            local final_node = base .. "_" .. tostring(max_stage)
-            if not minetest.registered_nodes[final_node] then
-                final_node = base .. tostring(max_stage)
-            end
-            minetest.log("action", "[volcanic_soil] get_max_stage_for_node: " .. node_name .. " -> base=" .. base .. ", max_stages=" .. max_stage .. " (counted from registered_nodes, skipping air aliases)")
-            return max_stage
+        
+        -- Check if node is registered AND not an alias to air
+        if minetest.registered_nodes[test_node] then
+            max_stage = stage
+        else
+            break
         end
     end
+    
+    if max_stage > 0 then
+        minetest.log("action", "[volcanic_soil] max_stage for " .. node_name .. " = " .. max_stage .. " (by counting registered nodes)")
+        return max_stage
+    end
 
-    minetest.log("warning", "[volcanic_soil] get_max_stage_for_node: could not determine max stage for " .. node_name)
+    minetest.log("warning", "[volcanic_soil] could not determine max_stage for " .. node_name)
     return nil
 end
 
@@ -83,8 +84,14 @@ local function advance_growth_stage(pos, node, ndef)
     local current_stage = tonumber(stage_str)
     local max_stage = get_max_stage_for_node(node.name)
 
-    -- Don't advance beyond the max stage defined in the farming system
-    if max_stage and current_stage >= max_stage then
+    -- Only advance if we know the max stage AND haven't reached it yet
+    if not max_stage then
+        -- Can't determine max stage - don't advance (play it safe)
+        minetest.log("action", string.format("[volcanic_soil] crop %s at stage %d, skipping advance (unknown max stage) at %d,%d,%d", node.name, current_stage, pos.x, pos.y, pos.z))
+        return false
+    end
+
+    if current_stage >= max_stage then
         minetest.log("action", string.format("[volcanic_soil] crop %s at final stage %d, not advancing at %d,%d,%d", node.name, current_stage, pos.x, pos.y, pos.z))
         return false
     end
